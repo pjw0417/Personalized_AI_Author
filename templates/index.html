@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Personalized AI Author</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: #f4f4f8;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem 2rem;
+      }
+      label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 60px;
+      }
+      .full-width {
+        grid-column: span 2;
+      }
+      button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        background: #4f46e5;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #4338ca;
+      }
+      .results {
+        margin-top: 2rem;
+      }
+      .results section {
+        margin-bottom: 1.5rem;
+      }
+      .results pre {
+        white-space: pre-wrap;
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+      .downloads a {
+        margin-right: 1rem;
+      }
+      .hidden {
+        display: none;
+      }
+      #status-list {
+        list-style: disc;
+        padding-left: 1.25rem;
+      }
+      .progress-wrapper {
+        margin-bottom: 1rem;
+      }
+      .progress-track {
+        width: 100%;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+        height: 14px;
+      }
+      .progress-fill {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        transition: width 0.3s ease;
+      }
+      .progress-text {
+        margin-top: 0.25rem;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Personalized AI Author</h1>
+      <p>Fill in the questionnaire, click generate, and the pipeline will handle planning, drafting, editing, critiquing, and PDF export.</p>
+
+      <form id="profile-form" method="post">
+        <div>
+          <label for="age">Age</label>
+          <input type="number" id="age" name="age" required value="{{ form_values.get('age', '') }}" min="10" max="120" />
+        </div>
+        <div>
+          <label for="education_level">Education level (optional)</label>
+          <input type="text" id="education_level" name="education_level" value="{{ form_values.get('education_level', '') }}" />
+        </div>
+        <div class="full-width">
+          <label for="preferred_theme">Preferred theme</label>
+          <input type="text" id="preferred_theme" name="preferred_theme" required value="{{ form_values.get('preferred_theme', '') }}" />
+        </div>
+        <div>
+          <label for="purpose_of_reading">Purpose of reading</label>
+          <input type="text" id="purpose_of_reading" name="purpose_of_reading" required value="{{ form_values.get('purpose_of_reading', '') }}" />
+        </div>
+        <div>
+          <label for="mood_today">Mood today</label>
+          <input type="text" id="mood_today" name="mood_today" required value="{{ form_values.get('mood_today', '') }}" />
+        </div>
+        <div>
+          <label for="favorite_author">Favorite author (optional)</label>
+          <input type="text" id="favorite_author" name="favorite_author" value="{{ form_values.get('favorite_author', '') }}" />
+        </div>
+        <div>
+          <label for="length_in_pages">Length in pages</label>
+          <input type="number" id="length_in_pages" name="length_in_pages" min="1" max="200" required value="{{ form_values.get('length_in_pages', '') }}" />
+        </div>
+        <div class="full-width">
+          <label for="special_request">Special request (optional)</label>
+          <textarea id="special_request" name="special_request" placeholder="Any topics, constraints, or wishes to honor?">{{ form_values.get('special_request', '') }}</textarea>
+        </div>
+        <div class="full-width">
+          <button type="submit">Generate Book</button>
+        </div>
+      </form>
+
+      <div class="results" id="progress-panel">
+        <h2>Progress</h2>
+        <div class="progress-wrapper">
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-text" id="progress-text">0%</div>
+        </div>
+        <ul id="status-list"></ul>
+      </div>
+
+      <div class="results hidden" id="downloads-panel">
+        <h2>Downloads</h2>
+        <div class="downloads" id="download-links"></div>
+      </div>
+
+      <div class="results hidden" id="results-panel">
+        <h2>Generation Results</h2>
+        <section>
+          <h3>Plan</h3>
+          <pre id="plan-output"></pre>
+        </section>
+        <section>
+          <h3>Draft</h3>
+          <pre id="draft-output"></pre>
+        </section>
+        <section>
+          <h3>Final Text</h3>
+          <pre id="final-output"></pre>
+        </section>
+        <section>
+          <h3>Critique</h3>
+          <pre id="critique-output"></pre>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("profile-form");
+      const statusList = document.getElementById("status-list");
+      const submitButton = form.querySelector("button[type='submit']");
+      const defaultButtonText = submitButton.textContent;
+      const planOutput = document.getElementById("plan-output");
+      const draftOutput = document.getElementById("draft-output");
+      const finalOutput = document.getElementById("final-output");
+      const critiqueOutput = document.getElementById("critique-output");
+      const downloadsPanel = document.getElementById("downloads-panel");
+      const resultsPanel = document.getElementById("results-panel");
+      const downloadLinks = document.getElementById("download-links");
+      const progressFill = document.getElementById("progress-fill");
+      const progressText = document.getElementById("progress-text");
+
+      function resetUI() {
+        statusList.innerHTML = "";
+        planOutput.textContent = "";
+        draftOutput.textContent = "";
+        finalOutput.textContent = "";
+        critiqueOutput.textContent = "";
+        downloadLinks.innerHTML = "";
+        resultsPanel.classList.add("hidden");
+        downloadsPanel.classList.add("hidden");
+        updateProgress(0);
+      }
+
+      function addStatus(message) {
+        const li = document.createElement("li");
+        li.textContent = message;
+        statusList.appendChild(li);
+      }
+
+      function showDownloads(files) {
+        downloadLinks.innerHTML = "";
+        Object.entries(files).forEach(([label, file]) => {
+          const link = document.createElement("a");
+          link.href = `/download/${encodeURIComponent(file)}`;
+          link.textContent = label.toUpperCase();
+          downloadLinks.appendChild(link);
+        });
+        downloadsPanel.classList.remove("hidden");
+      }
+
+      function revealResults() {
+        resultsPanel.classList.remove("hidden");
+      }
+
+      function updateProgress(percent) {
+        progressFill.style.width = `${percent}%`;
+        progressText.textContent = `${percent}%`;
+      }
+
+      function setButtonState(isDisabled) {
+        submitButton.disabled = isDisabled;
+        submitButton.textContent = isDisabled ? "Generating..." : defaultButtonText;
+      }
+
+      async function handleSubmit(event) {
+        event.preventDefault();
+        resetUI();
+        addStatus("Submitting request...");
+        setButtonState(true);
+
+        try {
+          const formData = new FormData(form);
+          const response = await fetch("/generate", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok || !response.body) {
+            addStatus("Server error starting generation.");
+            return;
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const payload = JSON.parse(line);
+                handleEvent(payload);
+              } catch (err) {
+                console.error("Failed to parse event", line, err);
+              }
+            }
+          }
+        } catch (err) {
+          addStatus(`Client error: ${err}`);
+        } finally {
+          setButtonState(false);
+        }
+      }
+
+      function handleEvent(payload) {
+        switch (payload.type) {
+          case "status":
+            addStatus(payload.message);
+            break;
+          case "plan":
+            planOutput.textContent = payload.content;
+            revealResults();
+            addStatus("Plan ready.");
+            break;
+          case "draft":
+            draftOutput.textContent = payload.content;
+            addStatus("Draft completed.");
+            break;
+          case "final_text":
+            finalOutput.textContent = payload.content;
+            addStatus("Editing finished.");
+            break;
+          case "critique":
+            critiqueOutput.textContent = payload.content;
+            addStatus("Critique written.");
+            break;
+          case "artifacts":
+            showDownloads(payload.files);
+            addStatus("Artifacts saved.");
+            break;
+          case "complete":
+            addStatus("All steps done!");
+            updateProgress(100);
+            break;
+          case "progress":
+            updateProgress(payload.percent || 0);
+            break;
+          case "error":
+            addStatus(`Error: ${payload.message}`);
+            break;
+          default:
+            console.log("Unknown event", payload);
+        }
+      }
+
+      form.addEventListener("submit", handleSubmit);
+    </script>
+  </body>
+</html>

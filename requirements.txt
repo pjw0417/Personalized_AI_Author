@@ -1,0 +1,11 @@
+langchain
+langchain-openai
+langchain-core
+langchain-text-splitters
+langchain-community
+python-dotenv
+chromadb
+fpdf2
+requests
+flask
+reportlab
